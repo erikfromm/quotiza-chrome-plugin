@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "Quotiza Sheet Connector",
+  "version": "1.0",
+  "description": "Connect Google Sheets with Quotiza to import products",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting",
+    "tabs",
+    "identity"
+  ],
+  "host_permissions": [
+    "https://docs.google.com/spreadsheets/*",
+    "https://app.quotiza.com/*",
+    "https://sheets.googleapis.com/*",
+    "https://apis.google.com/*"
+  ],
+  "oauth2": {
+    "client_id": "389846337856-7n6159cngm0jkltolcec255v5ap7nnj9.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/spreadsheets.readonly"
+    ]
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  }
+} 
