@@ -1,4 +1,4 @@
-// Log cuando el script se carga
+window.quotizaContentLoaded = true;
 console.log('Content script loaded and running');
 
 // Función para obtener los datos de la hoja
@@ -30,15 +30,30 @@ function getSheetData() {
     }
 }
 
-// Escuchar mensajes del popup
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    console.log('Message received:', request);
+// Función para crear el sidebar
+function createSidebar() {
+    const sidebar = document.createElement('div');
+    sidebar.id = 'quotiza-sidebar';
     
-    if (request.action === 'getSheetData') {
-        console.log('Getting sheet data...');
-        const data = getSheetData();
-        console.log('Sending data back:', data);
-        sendResponse({ data: data });
+    const iframe = document.createElement('iframe');
+    iframe.src = chrome.runtime.getURL('popup.html');
+    
+    sidebar.appendChild(iframe);
+    document.body.appendChild(sidebar);
+    return sidebar;
+}
+
+// Función para toggle del sidebar
+function toggleSidebar() {
+    const sidebar = document.getElementById('quotiza-sidebar') || createSidebar();
+    sidebar.classList.toggle('open');
+}
+
+// Escuchar mensajes
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'toggleSidebar') {
+        toggleSidebar();
+        sendResponse({ success: true });
     }
-    return true; // Mantener el canal de comunicación abierto
+    return true;
 }); 

@@ -1,0 +1,46 @@
+#quotiza-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    right: -400px !important;
+    width: 400px !important;
+    height: 100vh !important;
+    background: white !important;
+    box-shadow: -2px 0 8px rgba(0,0,0,0.1) !important;
+    transition: right 0.3s ease !important;
+    z-index: 9999999 !important;
+    border-left: 1px solid #ccc !important;
+}
+
+#quotiza-sidebar.open {
+    right: 0 !important;
+}
+
+#quotiza-sidebar iframe {
+    width: 100% !important;
+    height: 100% !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+}
+
+/* Asegurar que los estilos del iframe no sean afectados */
+#quotiza-sidebar iframe {
+    all: initial !important;
+    width: 100% !important;
+    height: 100% !important;
+    border: none !important;
+}
+
+/* Restaurar estilos dentro del iframe */
+#quotiza-sidebar iframe html,
+#quotiza-sidebar iframe body {
+    all: initial !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    box-sizing: border-box !important;
+    font-family: Arial, sans-serif !important;
+    background: white !important;
+} 
