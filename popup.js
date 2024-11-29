@@ -1,291 +1,442 @@
-async function handleImport() {
-    try {
-        showStatus('Preparing import...', 'info');
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOM Content Loaded');
+    
+    // Configurar event listeners
+    const loginButton = document.getElementById('loginBtn');
+    if (loginButton) {
+        loginButton.addEventListener('click', handleLogin);
+        console.log('Login button listener added');
+    }
 
-        const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        const matches = currentTab.url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-        if (matches) {
-            await saveColumnMapping(matches[1]);
-        }
+    const importButton = document.getElementById('importBtn');
+    if (importButton) {
+        importButton.addEventListener('click', handleImport);
+        console.log('Import button listener added');
+    }
 
-        const mapping = {
-            sku: document.getElementById('skuColumn').value,
-            name: document.getElementById('nameColumn').value,
-            brand: document.getElementById('brandColumn').value,
-            category: document.getElementById('categoryColumn').value,
-            imageUrl: document.getElementById('imageUrlColumn').value,
-            basePrice: document.getElementById('basePriceColumn').value
-        };
-
-        // Verificar campos requeridos
-        if (!mapping.sku || !mapping.name || !mapping.brand) {
-            showError('SKU, Name and Brand columns are required');
-            return;
-        }
-
-        const sheetData = await getSheetData();
-        const dataRows = sheetData.slice(1);
-
-        // Validación mejorada con tracking de errores
-        const products = [];
-        const validationErrors = [];
-        
-        dataRows.forEach((row, index) => {
-            const rowNumber = index + 2; // +2 porque empezamos desde la fila 2 (después de headers)
-            const product = {};
-            let hasError = false;
-
-            // Validar campos requeridos
-            const requiredFields = {
-                sku: mapping.sku,
-                name: mapping.name,
-                brand: mapping.brand
-            };
-
-            for (const [field, column] of Object.entries(requiredFields)) {
-                const value = row[column.charCodeAt(0) - 65]?.trim();
-                if (!value) {
-                    validationErrors.push({
-                        row: rowNumber,
-                        column: column,
-                        field: field,
-                        message: `Empty ${field} in cell ${column}${rowNumber}`
-                    });
-                    hasError = true;
-                } else {
-                    product[field] = value;
-                }
-            }
-
-            // Solo procesar campos opcionales si no hay errores en los requeridos
-            if (!hasError) {
-                // Campos opcionales
-                if (mapping.category) {
-                    product.category = row[mapping.category.charCodeAt(0) - 65]?.trim();
-                }
-                if (mapping.imageUrl) {
-                    product.image_url = row[mapping.imageUrl.charCodeAt(0) - 65]?.trim();
-                }
-                if (mapping.basePrice) {
-                    const price = parseFloat(row[mapping.basePrice.charCodeAt(0) - 65]);
-                    if (!isNaN(price)) {
-                        product.base_price = price;
-                    }
-                }
-                products.push(product);
-            }
+    const closeButton = document.querySelector('.hide-sidebar-btn');
+    if (closeButton) {
+        closeButton.addEventListener('click', () => {
+            window.parent.postMessage({ action: 'toggleSidebar' }, '*');
         });
+        console.log('Sidebar button found');
+    }
 
-        // Preparar resumen con validación
-        const summary = {
-            totalRows: dataRows.length,
-            validProducts: products.length,
-            errors: validationErrors,
-            withCategory: products.filter(p => p.category).length,
-            withImage: products.filter(p => p.image_url).length,
-            withPrice: products.filter(p => p.base_price).length,
-            sampleProducts: products.slice(0, 3),
-            canProceed: validationErrors.length === 0
-        };
+    setupLogoutButton();
+});
 
-        const confirmImport = await showImportSummary(summary);
-        if (!confirmImport) {
-            showStatus('Import cancelled', 'info');
-            return;
+function showStatus(message, type = 'info') {
+    const statusContainer = document.createElement('div');
+    statusContainer.className = `status-message ${type}`;
+    statusContainer.textContent = message;
+    
+    // Remover cualquier mensaje de estado anterior
+    const oldStatus = document.querySelector('.status-message');
+    if (oldStatus) {
+        oldStatus.remove();
+    }
+    
+    document.body.appendChild(statusContainer);
+    
+    // Auto-ocultar después de 3 segundos
+    setTimeout(() => {
+        statusContainer.remove();
+    }, 3000);
+}
+
+function showError(message) {
+    showStatus(message, 'error');
+}
+
+async function handleLogin() {
+    try {
+        const apiToken = document.getElementById('apiToken').value.trim();
+        const accountId = document.getElementById('accountId').value.trim();
+
+        if (!apiToken || !accountId) {
+            throw new Error('API Token and Account ID are required');
         }
 
-        // Solo proceder si no hay errores
-        if (validationErrors.length > 0) {
-            throw new Error('Please fix validation errors before importing');
-        }
+        const queryParams = new URLSearchParams({
+            account_id: accountId,
+            job_id: "fake_job_id"
+        }).toString();
 
-        showStatus('Starting import...', 'info');
+        const url = `https://app.quotiza.com/api/v1/products/import_status?${queryParams}`;
 
-        // Enviar a la API
-        const response = await fetch('https://app.quotiza.com/api/v1/products/import', {
-            method: 'POST',
+        console.log('Validating credentials with URL:', url);
+        console.log('API Token:', apiToken);
+
+        const response = await fetch(url, {
+            method: 'GET',
             headers: {
                 'Authorization': `Bearer ${apiToken}`,
                 'Content-Type': 'application/json'
+            }
+        });
+
+        console.log('Response Status:', response.status);
+        const responseText = await response.text();
+        console.log('Response Body:', responseText);
+
+        if (response.status === 401) {
+            throw new Error('Invalid API token or Account ID');
+        } else if (response.status === 404) {
+            // If it's 404 and the message is "job not found", then the credentials are valid
+            console.log('Credentials validated successfully');
+        } else if (!response.ok) {
+            const errorData = JSON.parse(responseText || '{}');
+            throw new Error(errorData.error ? errorData.error.message : 'Unexpected error occurred');
+        }
+
+        // Store credentials
+        window.apiToken = apiToken;
+        window.accountId = accountId;
+
+        // Switch views
+        const loginSection = document.getElementById('loginSection');
+        const mainSection = document.getElementById('mainSection');
+
+        if (loginSection && mainSection) {
+            loginSection.style.display = 'none';
+            mainSection.style.display = 'block';
+        } else {
+            console.error('Required sections not found:', {
+                loginSection: !!loginSection,
+                mainSection: !!mainSection
+            });
+            throw new Error('Unable to switch views - required elements not found');
+        }
+
+        // Initialize tabs
+        setupTabListeners();
+
+        // Check if we're in a spreadsheet
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tab.url.includes('docs.google.com/spreadsheets')) {
+            await loadSheetColumns();
+        }
+
+    } catch (error) {
+        console.error('Login error:', error);
+        showError(error.message);
+    }
+}
+
+async function handleImport() {
+    try {
+        showStatus('Preparing import...', 'info');
+        
+        const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!currentTab.url.includes('docs.google.com/spreadsheets')) {
+            throw new Error('Invalid spreadsheet URL');
+        }
+
+        // Extraer el ID y el gid de la hoja activa
+        const url = new URL(currentTab.url);
+        const pathParts = url.pathname.split('/');
+        let spreadsheetId = '';
+        let activeSheetId = '';
+
+        // Buscar el ID en la URL
+        for (let i = 0; i < pathParts.length; i++) {
+            if (pathParts[i] === 'd' && i + 1 < pathParts.length) {
+                spreadsheetId = pathParts[i + 1];
+                break;
+            }
+        }
+
+        // Obtener el gid de la URL
+        const gidMatch = url.hash.match(/gid=(\d+)/);
+        if (gidMatch && gidMatch[1]) {
+            activeSheetId = gidMatch[1];
+        }
+
+        if (!spreadsheetId || !activeSheetId) {
+            throw new Error('Invalid spreadsheet URL');
+        }
+
+        console.log('Import - Spreadsheet ID:', spreadsheetId);
+        console.log('Import - Active sheet ID:', activeSheetId);
+
+        const data = await window.getSheetData(spreadsheetId, activeSheetId);
+        
+        if (!data || data.length <= 1) {
+            throw new Error('No data found in spreadsheet');
+        }
+
+        // Validar límite de 1000 productos
+        if (data.length > 1001) {
+            showValidationModal([{
+                message: 'Too many products. Maximum allowed is 1000 products per import.',
+                type: 'error'
+            }]);
+            return;
+        }
+
+        // Obtener los valores de los selectores de columnas
+        const skuColumn = document.getElementById('skuColumn').value;
+        const nameColumn = document.getElementById('nameColumn').value;
+        const brandColumn = document.getElementById('brandColumn').value;
+        const categoryColumn = document.getElementById('categoryColumn').value;
+        const imageUrlColumn = document.getElementById('imageUrlColumn').value;
+        const basePriceColumn = document.getElementById('basePriceColumn').value;
+
+        // Mapear los índices de las columnas
+        const skuIndex = skuColumn.charCodeAt(0) - 65;
+        const nameIndex = nameColumn.charCodeAt(0) - 65;
+        const brandIndex = brandColumn.charCodeAt(0) - 65;
+        const categoryIndex = categoryColumn.charCodeAt(0) - 65;
+        const imageUrlIndex = imageUrlColumn.charCodeAt(0) - 65;
+        const basePriceIndex = basePriceColumn.charCodeAt(0) - 65;
+
+        // Map and validate products
+        const products = [];
+        const errors = [];
+        
+        for (let i = 1; i < data.length; i++) {
+            const row = data[i];
+            const product = {
+                sku: row[skuIndex]?.trim(),
+                name: row[nameIndex]?.trim(),
+                brand: row[brandIndex]?.trim(),
+                category: row[categoryIndex]?.trim(),
+                image_url: row[imageUrlIndex]?.trim(),
+                base_price: row[basePriceIndex] ? parseFloat(row[basePriceIndex]) : undefined
+            };
+
+            // Solo incluir campos que tienen valor
+            Object.keys(product).forEach(key => {
+                if (product[key] === undefined || product[key] === '') {
+                    delete product[key];
+                }
+            });
+
+            const productErrors = validateProduct(product, i + 1);
+            if (productErrors.length > 0) {
+                errors.push(...productErrors);
+            } else {
+                products.push(product);
+            }
+        }
+
+        if (errors.length > 0) {
+            showValidationModal(errors);
+            return;
+        }
+
+        // Preparar los datos para la importación
+        const importData = {
+            account_id: window.accountId,
+            products: products
+        };
+
+        console.log('Import request body:', importData);
+
+        // Realizar la importación
+        const response = await fetch('https://app.quotiza.com/api/v1/products/import', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${window.apiToken}`
             },
-            body: JSON.stringify({
-                account_id: accountId,
-                products: products
-            })
+            body: JSON.stringify(importData)
         });
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.error?.message || 'Import failed');
+            throw new Error(errorData.error?.message || 'Failed to import products');
         }
 
-        const result = await response.json();
-        showStatus(`Import successful! ${products.length} products are being processed.`, 'success');
+        const responseData = await response.json();
+        console.log('API Response:', responseData);
 
-        // Guardar en el historial
-        await saveToHistory({
-            totalProducts: products.length,
-            spreadsheetId: matches[1],
-            spreadsheetName: currentTab.title,
-        });
-
-        // Mostrar modal de éxito
-        await showSuccessModal({
-            totalProducts: products.length
-        });
+        // Verificar el estado de la importación
+        await checkImportStatus(responseData.job_id);
 
     } catch (error) {
         console.error('Import error:', error);
-        showError(`Import failed: ${error.message}`);
+        showError(error.message);
     }
 }
 
-// Función para mostrar el resumen de importación
-function showImportSummary(summary) {
-    return new Promise((resolve) => {
-        const modal = document.createElement('div');
-        modal.className = 'import-modal';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <h3>Import Summary</h3>
-                
-                ${summary.errors.length > 0 ? `
-                    <div class="validation-errors">
-                        <h4>Warning: Validation Errors</h4>
-                        <div class="errors-list">
-                            ${summary.errors.map(error => `
-                                <div class="error-item">
-                                    ${error.message}
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                ` : ''}
+async function checkImportStatus(jobId) {
+    try {
+        const response = await fetch(
+            `https://app.quotiza.com/api/v1/products/import_status?account_id=${window.accountId}&job_id=${jobId}`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${window.apiToken}`
+                }
+            }
+        );
 
-                <div class="summary-stats">
-                    <p><strong>Total rows:</strong> ${summary.totalRows}</p>
-                    <p><strong>Products to import:</strong> ${summary.validProducts}</p>
-                </div>
-
-                <div class="modal-buttons">
-                    ${summary.canProceed ? `
-                        <button class="confirm-btn">Confirm Import</button>
-                    ` : `
-                        <button class="error-btn" disabled>Cannot Import - Fix Errors</button>
-                    `}
-                    <button class="cancel-btn">Cancel</button>
-                </div>
-            </div>
-        `;
-
-        // Estilos del modal
-        const style = document.createElement('style');
-        style.textContent = `
-            .import-modal {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.5);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 1000;
-            }
-            
-            .modal-content {
-                background: white;
-                padding: 20px;
-                border-radius: 8px;
-                max-width: 400px;
-                width: 90%;
-                max-height: 80vh;
-                overflow-y: auto;
-                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            }
-            
-            .validation-errors {
-                background: #fff3cd;
-                border: 1px solid #ffeeba;
-                padding: 15px;
-                margin: 15px 0;
-                border-radius: 4px;
-            }
-            
-            .error-item {
-                color: #856404;
-                padding: 5px 0;
-                border-bottom: 1px solid #ffeeba;
-            }
-            
-            .summary-stats {
-                margin: 15px 0;
-                padding: 10px;
-                background: #f8f9fa;
-                border-radius: 4px;
-            }
-            
-            .summary-stats p {
-                margin: 5px 0;
-            }
-            
-            .modal-buttons {
-                margin-top: 20px;
-                display: flex;
-                justify-content: flex-end;
-                gap: 10px;
-            }
-            
-            .confirm-btn {
-                background: #4285f4;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
-                cursor: pointer;
-            }
-            
-            .cancel-btn {
-                background: #dc3545;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
-                cursor: pointer;
-            }
-            
-            .error-btn {
-                background: #6c757d;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
-                cursor: not-allowed;
-                opacity: 0.65;
-            }
-        `;
-
-        document.body.appendChild(style);
-        document.body.appendChild(modal);
-
-        // Manejar botones
-        if (summary.canProceed) {
-            modal.querySelector('.confirm-btn').onclick = () => {
-                modal.remove();
-                resolve(true);
-            };
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error?.message || 'Failed to check import status');
         }
-        modal.querySelector('.cancel-btn').onclick = () => {
-            modal.remove();
-            resolve(false);
-        };
-    });
+
+        const statusData = await response.json();
+        console.log('Import status:', statusData);
+
+        if (statusData.status === 'completed') {
+            showStatus(`Import completed: ${statusData.successes} products imported successfully, ${statusData.failures} failures`, 'success');
+        } else if (statusData.status === 'failed') {
+            showError('Import failed: ' + (statusData.errors?.[0]?.message || 'Unknown error'));
+        } else {
+            // Si todavía está procesando, verificar nuevamente en 2 segundos
+            setTimeout(() => checkImportStatus(jobId), 2000);
+        }
+
+    } catch (error) {
+        console.error('Status check error:', error);
+        showError(error.message);
+    }
 }
 
-// Variables globales para las credenciales
-let apiToken = '';
-let accountId = '';
+async function validateAndMapProducts(data) {
+    const products = [];
+    const headers = data[0];
+    
+    // Get column mappings
+    const mappings = {
+        sku: document.getElementById('skuColumn').value,
+        name: document.getElementById('nameColumn').value,
+        basePrice: document.getElementById('basePriceColumn').value,
+        // Add other mappings as needed
+    };
+
+    // Validate each row
+    for (let i = 1; i < data.length; i++) {
+        const row = data[i];
+        const product = {};
+        let isValid = true;
+        const validationErrors = [];
+
+        // Map and validate required fields
+        const skuIndex = getColumnIndex(mappings.sku);
+        const nameIndex = getColumnIndex(mappings.name);
+        const priceIndex = getColumnIndex(mappings.basePrice);
+
+        if (!row[skuIndex]?.trim()) {
+            validationErrors.push(`Row ${i + 1}: SKU is required`);
+            isValid = false;
+        }
+
+        if (!row[nameIndex]?.trim()) {
+            validationErrors.push(`Row ${i + 1}: Name is required`);
+            isValid = false;
+        }
+
+        if (!row[priceIndex] || isNaN(parseFloat(row[priceIndex]))) {
+            validationErrors.push(`Row ${i + 1}: Base Price must be a valid number`);
+            isValid = false;
+        }
+
+        if (!isValid) {
+            console.error('Validation errors:', validationErrors);
+            continue;
+        }
+
+        // Map the product data
+        product.sku = row[skuIndex].trim();
+        product.name = row[nameIndex].trim();
+        product.base_price = parseFloat(row[priceIndex]);
+        
+        // Add other mapped fields...
+
+        products.push(product);
+    }
+
+    return products;
+}
+
+function getColumnIndex(columnLetter) {
+    return columnLetter ? columnLetter.charCodeAt(0) - 65 : -1;
+}
+
+// Función para cargar las columnas en los selectores
+async function loadSheetColumns() {
+    try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab.url.includes('docs.google.com/spreadsheets')) {
+            console.log('Not in a Google Spreadsheet');
+            return;
+        }
+
+        // Extraer el ID y el gid de la hoja activa
+        const url = new URL(tab.url);
+        const pathParts = url.pathname.split('/');
+        let spreadsheetId = '';
+        let activeSheetId = '';
+
+        // Buscar el ID en la URL
+        for (let i = 0; i < pathParts.length; i++) {
+            if (pathParts[i] === 'd' && i + 1 < pathParts.length) {
+                spreadsheetId = pathParts[i + 1];
+                break;
+            }
+        }
+
+        // Obtener el gid de la URL
+        const gidMatch = url.hash.match(/gid=(\d+)/);
+        if (gidMatch && gidMatch[1]) {
+            activeSheetId = gidMatch[1];
+        }
+
+        if (!spreadsheetId || !activeSheetId) {
+            throw new Error('Invalid spreadsheet URL');
+        }
+
+        console.log('Spreadsheet URL:', tab.url);
+        console.log('Extracted spreadsheet ID:', spreadsheetId);
+        console.log('Active sheet ID:', activeSheetId);
+
+        const data = await window.getSheetData(spreadsheetId, activeSheetId);
+        
+        if (!data || data.length === 0) {
+            console.log('No data found in spreadsheet');
+            showTemplateModal();
+            return;
+        }
+
+        const headers = data[0];
+        populateDropdowns(headers);
+
+        console.log('Columns loaded successfully');
+
+    } catch (error) {
+        console.error('Error loading columns:', error);
+        showError('Failed to load spreadsheet columns: ' + error.message);
+    }
+}
+
+function populateDropdowns(headers) {
+    const dropdowns = [
+        'skuColumn',
+        'nameColumn',
+        'brandColumn',
+        'categoryColumn',
+        'imageUrlColumn',
+        'basePriceColumn'
+    ];
+
+    dropdowns.forEach(dropdownId => {
+        const select = document.getElementById(dropdownId);
+        if (!select) return;
+
+        // Clear existing options
+        select.innerHTML = '<option value="">Select Column</option>';
+
+        // Add column options
+        headers.forEach((header, index) => {
+            const option = document.createElement('option');
+            option.value = String.fromCharCode(65 + index); // Convert to A, B, C, etc.
+            option.textContent = `${String.fromCharCode(65 + index)} - ${header}`;
+            select.appendChild(option);
+        });
+    });
+}
 
 // Función para configurar los event listeners de la sección de mapeo
 function setupMappingSectionListeners() {
@@ -295,18 +446,6 @@ function setupMappingSectionListeners() {
         importBtn.addEventListener('click', handleImport);
     }
 
-    // History button
-    const historyBtn = document.getElementById('historyBtn');
-    if (historyBtn) {
-        historyBtn.addEventListener('click', showHistory);
-    }
-
-    // Back button en la vista de historial
-    const backBtn = document.getElementById('backFromHistoryBtn');
-    if (backBtn) {
-        backBtn.addEventListener('click', backFromHistory);
-    }
-
     // Logout button
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
@@ -314,100 +453,24 @@ function setupMappingSectionListeners() {
     }
 }
 
-// Modificar la función handleLogin
-async function handleLogin() {
-    try {
-        const token = document.getElementById('apiToken').value.trim();
-        const account = document.getElementById('accountId').value.trim();
-
-        if (!token || !account) {
-            showError('Please enter both API Token and Account ID');
-            return;
-        }
-
-        // Guardar credenciales
-        await chrome.storage.local.set({
-            apiToken: token,
-            accountId: account
-        });
-
-        apiToken = token;
-        accountId = account;
-
-        // Mostrar sección de mapeo
-        document.getElementById('loginSection').style.display = 'none';
-        document.getElementById('mappingSection').style.display = 'block';
-
-        // Configurar listeners después de mostrar la sección
-        setupMappingSectionListeners();
-
-        // Cargar columnas
-        await loadSheetColumns();
-
-    } catch (error) {
-        console.error('Login error:', error);
-        showError('Login failed: ' + error.message);
-    }
-}
-
-// Modificar loadSavedCredentials
-async function loadSavedCredentials() {
-    try {
-        const { apiToken: savedToken, accountId: savedAccount } = 
-            await chrome.storage.local.get(['apiToken', 'accountId']);
-
-        if (savedToken && savedAccount) {
-            apiToken = savedToken;
-            accountId = savedAccount;
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('mappingSection').style.display = 'block';
-            
-            // Configurar listeners después de mostrar la sección
-            setupMappingSectionListeners();
-            
-            await loadSheetColumns();
-        }
-    } catch (error) {
-        console.error('Error loading credentials:', error);
-    }
-}
-
-// Event Listeners iniciales
-document.addEventListener('DOMContentLoaded', async () => {
-    // Solo el botón de login inicialmente
-    const loginBtn = document.getElementById('loginBtn');
-    if (loginBtn) {
-        loginBtn.addEventListener('click', handleLogin);
-    }
-
-    // Cargar credenciales guardadas
-    await loadSavedCredentials();
-});
-
 // Función para manejar el logout
 async function handleLogout() {
     try {
         // Limpiar credenciales del storage
-        await chrome.storage.local.remove(['apiToken', 'accountId', 'columnMapping']);
+        await chrome.storage.local.remove(['apiToken', 'accountId']);
         
         // Limpiar variables globales
-        apiToken = '';
-        accountId = '';
+        window.apiToken = '';
+        window.accountId = '';
         
         // Limpiar campos de input
         document.getElementById('apiToken').value = '';
         document.getElementById('accountId').value = '';
         
-        // Ocultar sección de mapeo y mostrar login
+        // Ocultar sección principal y mostrar login
         document.getElementById('loginSection').style.display = 'block';
-        document.getElementById('mappingSection').style.display = 'none';
+        document.getElementById('mainSection').style.display = 'none';
         
-        // Limpiar los selectores de columnas
-        const selects = document.querySelectorAll('.column-select');
-        selects.forEach(select => {
-            select.innerHTML = '<option value="">-- Select Column --</option>';
-        });
-
         showStatus('Logged out successfully', 'success');
     } catch (error) {
         console.error('Logout error:', error);
@@ -415,338 +478,451 @@ async function handleLogout() {
     }
 }
 
-// Función para mostrar la sección de mapping
-async function showMappingSection() {
-    try {
-        showStatus('Authenticating with Google...', 'info');
-        
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        
-        if (!tab.url.includes('docs.google.com/spreadsheets')) {
-            throw new Error('Please open a Google Spreadsheet first');
-        }
+function validateProducts(products) {
+    const errors = [];
+    const skus = new Set();
 
-        // Extraer el ID de la hoja para validación
-        const matches = tab.url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-        if (!matches) {
-            throw new Error('Invalid Google Sheets URL');
-        }
-        
-        // Intentar autenticar y hacer una petición de prueba
-        const spreadsheetId = matches[1];
-        await window.getSheetData(spreadsheetId);
-
-        // Si llegamos aquí, la autenticación fue exitosa
-        document.getElementById('loginSection').style.display = 'none';
-        document.getElementById('mappingSection').style.display = 'block';
-        
-        // Cargar las columnas
-        await loadSheetColumns();
-        
-        showStatus('Ready to import', 'success');
-    } catch (error) {
-        console.error('Authentication error:', error);
-        let errorMessage = 'Google authentication failed: ';
-        
-        if (error.message.includes('Please open a Google Spreadsheet')) {
-            errorMessage = 'Please open a Google Spreadsheet first';
-        } else if (error.message.includes('Invalid Google Sheets URL')) {
-            errorMessage = 'Invalid Google Sheets URL';
-        } else {
-            errorMessage += error.message;
-        }
-        
-        showError(errorMessage);
-        // Mantener visible la sección de login si falla la autenticación
-        document.getElementById('loginSection').style.display = 'block';
-        document.getElementById('mappingSection').style.display = 'none';
+    if (products.length > 1000) {
+        errors.push('Maximum 1000 products allowed per import');
+        return errors;
     }
-}
 
-// Funci��n para mostrar mensajes de estado
-function showStatus(message, type = 'info') {
-    const statusElement = document.getElementById('statusMessage');
-    statusElement.textContent = message;
-    statusElement.className = type;
-}
+    products.forEach((product, index) => {
+        const rowNum = index + 2; // +2 porque la primera fila es headers y el índice empieza en 0
 
-// Función para mostrar errores
-function showError(message) {
-    showStatus(message, 'error');
-}
+        // Validar SKU (requerido y único)
+        if (!product.sku) {
+            errors.push(`Row ${rowNum}: SKU is required`);
+        } else if (product.sku.length < 3) {
+            errors.push(`Row ${rowNum}: SKU must be at least 3 characters`);
+        } else if (skus.has(product.sku)) {
+            errors.push(`Row ${rowNum}: Duplicate SKU "${product.sku}"`);
+        }
+        skus.add(product.sku);
 
-// Función para cargar las columnas en los selectores
-async function loadSheetColumns() {
-    try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        
-        if (!tab.url.includes('docs.google.com/spreadsheets')) {
-            showError('Please open a Google Spreadsheet first');
-            return;
+        // Validar Name (requerido)
+        if (!product.name) {
+            errors.push(`Row ${rowNum}: Name is required`);
+        } else if (product.name.length < 3) {
+            errors.push(`Row ${rowNum}: Name must be at least 3 characters`);
         }
 
-        const matches = tab.url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-        if (!matches) {
-            throw new Error('Invalid Google Sheets URL');
-        }
-        const spreadsheetId = matches[1];
-
-        const sheetData = await window.getSheetData(spreadsheetId);
-        
-        if (!sheetData || sheetData.length === 0) {
-            throw new Error('No data found in spreadsheet');
+        // Validar Brand (requerido)
+        if (!product.brand) {
+            errors.push(`Row ${rowNum}: Brand is required`);
+        } else if (product.brand.length < 2) {
+            errors.push(`Row ${rowNum}: Brand must be at least 2 characters`);
         }
 
-        const headers = sheetData[0].map((header, index) => ({
-            column: String.fromCharCode(65 + index),
-            name: header || `Column ${String.fromCharCode(65 + index)}`,
-            index: index
-        }));
-
-        populateColumnSelects(headers);
-        
-        // Cargar mapeo guardado después de popular los selectores
-        await loadColumnMapping(spreadsheetId);
-
-        // Agregar event listeners para guardar cambios
-        const selects = document.querySelectorAll('.column-select');
-        selects.forEach(select => {
-            select.addEventListener('change', () => saveColumnMapping(spreadsheetId));
-        });
-
-    } catch (error) {
-        console.error('Error loading columns:', error);
-        showError('Error loading spreadsheet columns: ' + error.message);
-    }
-}
-
-// Función para poblar los selectores con las columnas
-function populateColumnSelects(headers) {
-    const selects = document.querySelectorAll('.column-select');
-    selects.forEach(select => {
-        // Mantener la opción por defecto
-        const defaultOption = select.querySelector('option');
-        select.innerHTML = '';
-        if (defaultOption) {
-            select.appendChild(defaultOption);
+        // Validar precios si existen
+        if (product.base_price !== undefined && (isNaN(product.base_price) || product.base_price < 0)) {
+            errors.push(`Row ${rowNum}: Base price must be a positive number`);
         }
-
-        // Agregar las opciones de columnas
-        headers.forEach(header => {
-            const option = document.createElement('option');
-            option.value = header.column;
-            option.textContent = `${header.column} - ${header.name}`;
-            select.appendChild(option);
-        });
+        if (product.cost !== undefined && (isNaN(product.cost) || product.cost < 0)) {
+            errors.push(`Row ${rowNum}: Cost must be a positive number`);
+        }
+        if (product.msrp !== undefined && (isNaN(product.msrp) || product.msrp < 0)) {
+            errors.push(`Row ${rowNum}: MSRP must be a positive number`);
+        }
     });
+
+    return errors;
 }
 
-// Función para obtener los datos de la hoja
-async function getSheetData() {
-    try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        
-        // Extraer el ID de la hoja de la URL
-        const matches = tab.url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-        if (!matches) {
-            throw new Error('Invalid Google Sheets URL');
-        }
-        const spreadsheetId = matches[1];
-
-        // Inicializar el cliente de Google
-        await gapi.client.init({
-            clientId: '389846337856-7n6159cngm0jkltolcec255v5ap7nnj9.apps.googleusercontent.com',
-            scope: 'https://www.googleapis.com/auth/spreadsheets.readonly'
-        });
-
-        // Obtener los datos de la hoja
-        const response = await gapi.client.sheets.spreadsheets.values.get({
-            spreadsheetId: spreadsheetId,
-            range: 'A:Z'  // Rango amplio para obtener todas las columnas necesarias
-        });
-
-        if (!response.result.values || response.result.values.length === 0) {
-            throw new Error('No data found in spreadsheet');
-        }
-
-        console.log('Sheet data retrieved:', response.result.values);
-        return response.result.values;
-
-    } catch (error) {
-        console.error('Error getting sheet data:', error);
-        throw new Error('Could not read spreadsheet data: ' + error.message);
-    }
-}
-
-// Función para guardar el mapeo actual
-async function saveColumnMapping(spreadsheetId) {
-    const mapping = {
-        sku: document.getElementById('skuColumn').value,
-        name: document.getElementById('nameColumn').value,
-        brand: document.getElementById('brandColumn').value,
-        category: document.getElementById('categoryColumn').value,
-        imageUrl: document.getElementById('imageUrlColumn').value,
-        basePrice: document.getElementById('basePriceColumn').value,
-        spreadsheetId: spreadsheetId
-    };
-
-    await chrome.storage.local.set({ columnMapping: mapping });
-}
-
-// Función para cargar el mapeo guardado
-async function loadColumnMapping(spreadsheetId) {
-    const { columnMapping } = await chrome.storage.local.get('columnMapping');
+function showValidationModal(errors) {
+    console.log('Showing validation modal with errors:', errors);
     
-    if (columnMapping && columnMapping.spreadsheetId === spreadsheetId) {
-        const selectors = {
-            'skuColumn': columnMapping.sku,
-            'nameColumn': columnMapping.name,
-            'brandColumn': columnMapping.brand,
-            'categoryColumn': columnMapping.category,
-            'imageUrlColumn': columnMapping.imageUrl,
-            'basePriceColumn': columnMapping.basePrice
-        };
+    // Remover modales existentes
+    const existingModal = document.querySelector('.validation-modal');
+    const existingOverlay = document.querySelector('.modal-overlay');
+    if (existingModal) existingModal.remove();
+    if (existingOverlay) existingOverlay.remove();
 
-        for (const [id, value] of Object.entries(selectors)) {
-            const select = document.getElementById(id);
-            if (select && value) {
-                select.value = value;
-            }
-        }
-    }
-}
-
-function showSuccessModal(result) {
-    return new Promise((resolve) => {
-        const modal = document.createElement('div');
-        modal.className = 'import-modal';
-        modal.innerHTML = `
-            <div class="modal-content success-modal">
-                <div class="success-icon">✅</div>
-                <h3>Import Successful!</h3>
-                <div class="success-details">
-                    <p>Your products are being processed</p>
-                    <p class="product-count">${result.totalProducts} products imported</p>
-                </div>
-                <div class="modal-buttons">
-                    <button class="confirm-btn">Close</button>
-                </div>
+    // Crear el overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+    `;
+    
+    // Crear el modal
+    const modal = document.createElement('div');
+    modal.className = 'validation-modal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 24px;
+        border-radius: 16px;
+        z-index: 1001;
+        width: calc(100% - 88px);
+        max-width: 400px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    `;
+    
+    // Contenido del modal basado en si hay errores o no
+    const hasErrors = errors && errors.length > 0;
+    modal.innerHTML = hasErrors ? `
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+            <h3 style="font-size: 20px; margin: 0; flex-grow: 1;">Import Summary</h3>
+            <button style="background: none; border: none; cursor: pointer; padding: 8px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17.25 6.75L6.75 17.25M6.75 6.75L17.25 17.25" stroke="#8A8AA3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        </div>
+        <p style="margin-bottom: 20px; color: #666;">Review the following validation errors before proceeding</p>
+        <div style="
+            background: #F8F8F9;
+            border: 1px solid #E5E5E9;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+        ">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M4.95227 16.3535L10.2153 5.85653C10.9532 4.38476 13.054 4.38515 13.7913 5.85718L19.0495 16.3542C19.7157 17.6841 18.7487 19.25 17.2613 19.25H6.74014C5.25241 19.25 4.28547 17.6835 4.95227 16.3535Z" stroke="#4B4B63" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M12 10V12" stroke="#4B4B63" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M12.5 16C12.5 16.2761 12.2761 16.5 12 16.5C11.7239 16.5 11.5 16.2761 11.5 16C11.5 15.7239 11.7239 15.5 12 15.5C12.2761 15.5 12.5 15.7239 12.5 16Z" stroke="#4B4B63"/>
+                </svg>
+                <h4 style="font-size: 16px; margin: 0; color: #4B4B63;">Warning: Validation Errors</h4>
             </div>
-        `;
+            ${errors.map(error => `
+                <div style="color: #666; margin-bottom: 8px; padding-left: 28px;">
+                    ${error.message}
+                </div>
+            `).join('')}
+        </div>
+        <button id="checkErrorsBtn" style="
+            width: 100%;
+            padding: 12px;
+            background: #EF4444;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        ">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11.25 4.75L8.75 7L11.25 9.25M12.75 19.25L15.25 17L12.75 14.75M9.75 7H13.25C16.5637 7 19.25 9.68629 19.25 13V13.25M14.25 17H10.75C7.43629 17 4.75 14.3137 4.75 11V10.75" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Check Errors
+        </button>
+    ` : `
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+            <h3 style="font-size: 20px; margin: 0; flex-grow: 1;">Import Summary</h3>
+            <button style="background: none; border: none; cursor: pointer; padding: 8px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17.25 6.75L6.75 17.25M6.75 6.75L17.25 17.25" stroke="#8A8AA3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        </div>
+        <p style="margin-bottom: 20px; color: #666;">No errors found! Your products are ready to import.</p>
+        <button id="importProductsBtn" style="
+            width: 100%;
+            padding: 12px;
+            background: #057a55;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        ">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4.75 14.75V16.25C4.75 17.9069 6.09315 19.25 7.75 19.25H16.25C17.9069 19.25 19.25 17.9069 19.25 16.25V14.75M12 14.25V5M8.75 8.25L12 4.75L15.25 8.25" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Import Products
+        </button>
+    `;
 
-        // Estilos específicos para el modal de éxito
-        const style = document.createElement('style');
-        style.textContent = `
-            .success-modal {
-                text-align: center;
-                padding: 20px;
-            }
-            
-            .success-icon {
-                font-size: 64px;
-                margin: 20px 0;
-            }
-            
-            .success-details {
-                margin: 20px 0;
-            }
-            
-            .product-count {
-                font-size: 24px;
-                font-weight: bold;
-                color: #4285f4;
-                margin: 15px 0;
-            }
-        `;
+    // Agregar al DOM
+    document.body.appendChild(overlay);
+    document.body.appendChild(modal);
 
-        document.body.appendChild(style);
-        document.body.appendChild(modal);
-
-        modal.querySelector('.confirm-btn').onclick = () => {
-            modal.remove();
-            resolve();
-        };
-    });
-}
-
-// Función para guardar una importación en el historial
-async function saveToHistory(importDetails) {
-    const { importHistory = [] } = await chrome.storage.local.get('importHistory');
+    // Event listeners
+    const closeButton = modal.querySelector('button');
+    const actionButton = modal.querySelector(hasErrors ? '#checkErrorsBtn' : '#importProductsBtn');
     
-    const newImport = {
-        date: new Date().toISOString(),
-        totalProducts: importDetails.totalProducts,
-        spreadsheetId: importDetails.spreadsheetId,
-        spreadsheetName: importDetails.spreadsheetName,
-        status: 'completed'
+    const closeModal = () => {
+        modal.remove();
+        overlay.remove();
     };
 
-    importHistory.unshift(newImport); // Agregar al inicio
+    closeButton.addEventListener('click', closeModal);
     
-    // Mantener solo las últimas 10 importaciones
-    if (importHistory.length > 10) {
-        importHistory.pop();
+    if (hasErrors) {
+        actionButton.addEventListener('click', async () => {
+            closeModal();
+            await handleImport(); // Volver a verificar errores
+        });
+    } else {
+        actionButton.addEventListener('click', async () => {
+            closeModal();
+            // Aquí iría la lógica de importación real
+        });
     }
-
-    await chrome.storage.local.set({ importHistory });
+    
+    overlay.addEventListener('click', closeModal);
 }
 
-// Función para mostrar el historial
-async function showHistory() {
+// Función para manejar el historial local
+async function addToImportHistory(importData) {
     try {
-        // Ocultar sección de mapeo y mostrar historial
-        document.getElementById('mappingSection').style.display = 'none';
-        document.getElementById('historySection').style.display = 'block';
-        
-        // Limpiar cualquier mensaje de estado previo
-        const statusMessage = document.getElementById('statusMessage');
-        if (statusMessage) {
-            statusMessage.style.display = 'none';
-        }
+        const storageKey = `importHistory_${window.accountId}`;
+        const stored = await chrome.storage.local.get(storageKey);
+        let history = stored[storageKey] || [];
 
-        const { importHistory = [] } = await chrome.storage.local.get('importHistory');
+        const newEntry = {
+            created_at: new Date().toISOString(),
+            total_products: importData.total_products,
+            status: 'completed',
+            account_id: window.accountId
+        };
+
+        history.unshift(newEntry);
+        
+        // Guardar con key específica para la cuenta
+        await chrome.storage.local.set({ [storageKey]: history });
+
         const historyList = document.getElementById('historyList');
-        
-        if (importHistory.length === 0) {
-            historyList.innerHTML = `
-                <div class="empty-history">
-                    <p>No import history yet</p>
-                </div>
-            `;
+        if (historyList && historyList.style.display !== 'none') {
+            await loadImportHistory();
+        }
+    } catch (error) {
+        console.error('Error saving to history:', error);
+    }
+}
+
+// Nueva función para cargar el historial
+async function loadImportHistory() {
+    try {
+        const historyList = document.getElementById('historyList');
+        if (!historyList) return;
+
+        const storageKey = `importHistory_${window.accountId}`;
+        const stored = await chrome.storage.local.get(storageKey);
+        const history = stored[storageKey] || [];
+
+        historyList.innerHTML = '';
+
+        if (history.length === 0) {
+            historyList.innerHTML = '<div class="empty-history">No import history available yet</div>';
             return;
         }
 
-        // Ordenar por fecha más reciente primero
-        const sortedHistory = [...importHistory].sort((a, b) => 
-            new Date(b.date) - new Date(a.date)
-        );
+        const table = document.createElement('table');
+        table.className = 'history-table';
+        
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Products</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${history.map(item => {
+                    const date = new Date(item.created_at);
+                    return `
+                        <tr>
+                            <td>${date.toLocaleDateString()}</td>
+                            <td>${date.toLocaleTimeString()}</td>
+                            <td>${item.total_products}</td>
+                        </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        `;
+        
+        historyList.appendChild(table);
+    } catch (error) {
+        console.error('Error loading history:', error);
+        historyList.innerHTML = '<div class="empty-history">Error loading import history</div>';
+    }
+}
 
-        historyList.innerHTML = sortedHistory.map(entry => `
-            <div class="history-card">
-                <div class="history-date">
-                    ${new Date(entry.date).toLocaleDateString()} 
-                    ${new Date(entry.date).toLocaleTimeString()}
-                </div>
-                <div class="history-products">
-                    ${entry.totalProducts} products imported
-                </div>
-            </div>
-        `).join('');
+function setupTabListeners() {
+    const tabs = document.querySelectorAll('.tab');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', async () => {
+            // Remover active de todos los tabs
+            tabs.forEach(t => t.classList.remove('active'));
+            // Agregar active al tab clickeado
+            tab.classList.add('active');
+
+            // Mostrar la sección correspondiente
+            if (tab.textContent === 'Import') {
+                document.getElementById('mappingSection').style.display = 'block';
+                document.getElementById('historySection').style.display = 'none';
+            } else if (tab.textContent === 'History') {
+                document.getElementById('mappingSection').style.display = 'none';
+                document.getElementById('historySection').style.display = 'block';
+                // Cargar el historial cuando se muestra la sección
+                await loadImportHistory();
+            }
+        });
+    });
+}
+
+const TEMPLATE_COLUMNS = [
+    'sku', 'name', 'brand', 'category', 'image_url', 'base_price', 
+    'msrp', 'description', 'active', 'upc', 'sales_unit', 
+    'base_unit_of_measure', 'base_units_per_sales_unit', 
+    'custom1_name', 'custom1_value', 'custom2_name', 'custom2_value', 
+    'custom3_name', 'custom3_value'
+];
+
+function showTemplateModal() {
+    if (document.getElementById('loginSection').style.display !== 'none') {
+        return;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    document.body.appendChild(overlay);
+
+    const modal = document.createElement('div');
+    modal.className = 'template-modal';
+    modal.innerHTML = `
+        <div class="template-modal-header">
+            <h3>Empty Spreadsheet Detected</h3>
+        </div>
+        <div class="template-modal-content">
+            <p>It looks like you're starting fresh. Would you like to use our import template to get started or stick with your current format?</p>
+        </div>
+        <div class="template-modal-actions">
+            <button class="template-btn template-btn-secondary" id="useOwnFormat">
+                Use Current Format
+            </button>
+            <button class="template-btn template-btn-primary" id="useTemplate">
+                Start with Template
+            </button>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    document.getElementById('useOwnFormat').addEventListener('click', () => {
+        modal.remove();
+        overlay.remove();
+    });
+
+    document.getElementById('useTemplate').addEventListener('click', async () => {
+        await createImportTemplate();
+        modal.remove();
+        overlay.remove();
+    });
+}
+
+async function createImportTemplate() {
+    try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const spreadsheetId = tab.url.match(/\/d\/(.*?)\//)[1];
+
+        // Send message to background script
+        const response = await chrome.runtime.sendMessage({
+            action: 'updateSheet',
+            spreadsheetId: spreadsheetId,
+            range: 'A1:S1',
+            values: [TEMPLATE_COLUMNS]
+        });
+
+        if (!response || response.error) {
+            throw new Error(response?.error || 'Failed to update sheet');
+        }
+
+        // Wait for changes to process
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Reload columns
+        await loadSheetColumns();
 
     } catch (error) {
-        console.error('Error showing history:', error);
-        showError('Error loading history: ' + error.message);
+        console.error('Error creating template:', error);
+        showError('Failed to create template. Please try again.');
     }
 }
 
-// Función para volver desde el historial
-function backFromHistory() {
-    document.getElementById('historySection').style.display = 'none';
-    document.getElementById('mappingSection').style.display = 'block';
-    
-    // Restaurar visibilidad del mensaje de estado si es necesario
-    const statusMessage = document.getElementById('statusMessage');
-    if (statusMessage) {
-        statusMessage.style.display = 'block';
+async function initializeGoogleApi() {
+    return new Promise((resolve, reject) => {
+        gapi.load('client', async () => {
+            try {
+                await gapi.client.init({
+                    apiKey: 'YOUR_API_KEY',
+                    discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
+                });
+                resolve();
+            } catch (error) {
+                reject(error);
+            }
+        });
+    });
+}
+
+function setupLogoutButton() {
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', handleLogout);
     }
 }
+
+function validateProduct(product, rowIndex) {
+    const errors = [];
+    
+    // Validar campos requeridos
+    if (!product.sku || product.sku.length < 3) {
+        errors.push({
+            message: `Row ${rowIndex}: SKU must be at least 3 characters`,
+            row: rowIndex
+        });
+    }
+    
+    if (!product.name || product.name.length < 3) {
+        errors.push({
+            message: `Row ${rowIndex}: Name must be at least 3 characters`,
+            row: rowIndex
+        });
+    }
+
+    if (!product.brand) {
+        errors.push({
+            message: `Row ${rowIndex}: Brand is required`,
+            row: rowIndex
+        });
+    }
+    
+    // Validar campos numéricos
+    if (product.base_price !== undefined && isNaN(product.base_price)) {
+        errors.push({
+            message: `Row ${rowIndex}: Base price must be a valid number`,
+            row: rowIndex
+        });
+    }
+
+    if (product.msrp !== undefined && isNaN(product.msrp)) {
+        errors.push({
+            message: `Row ${rowIndex}: MSRP must be a valid number`,
+            row: rowIndex
+        });
+    }
+
+    return errors;
+}
+

@@ -61,42 +61,99 @@
 
 console.log('Google API client loaded');
 
-async function getSheetData(spreadsheetId) {
+window.getSheetData = async function(spreadsheetId, activeSheetId) {
     try {
-        // Obtener token directamente usando chrome.identity
         const token = await new Promise((resolve, reject) => {
-            chrome.identity.getAuthToken({ interactive: true }, function(token) {
+            chrome.identity.getAuthToken({ 
+                interactive: true,
+                scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly']
+            }, function(token) {
                 if (chrome.runtime.lastError) {
-                    reject(chrome.runtime.lastError);
+                    console.error('Auth error:', chrome.runtime.lastError);
+                    reject(new Error('Authentication failed'));
                 } else {
+                    console.log('Token obtained successfully');
                     resolve(token);
                 }
             });
         });
 
-        // Hacer la petición directamente a la API de Google Sheets
-        const response = await fetch(
-            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/A:Z`,
+        // 2. Obtener los metadatos de la hoja
+        console.log('Fetching spreadsheet metadata...');
+        const metadataResponse = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`,
             {
                 headers: {
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        if (!metadataResponse.ok) {
+            const errorText = await metadataResponse.text();
+            console.error('Metadata API Response:', metadataResponse.status, errorText);
+            throw new Error(`Metadata API error: ${metadataResponse.status}`);
+        }
+
+        const metadata = await metadataResponse.json();
+        
+        // Encontrar la hoja activa
+        let activeSheet;
+        if (activeSheetId === '0') {
+            // Si el gid es 0, usar la primera hoja
+            activeSheet = metadata.sheets[0];
+        } else {
+            // Si no, buscar por el gid específico
+            activeSheet = metadata.sheets.find(sheet => 
+                sheet.properties.sheetId.toString() === activeSheetId
+            );
+        }
+
+        console.log('Sheets in document:', metadata.sheets.map(s => ({
+            title: s.properties.title,
+            sheetId: s.properties.sheetId
+        })));
+        console.log('Looking for sheet with ID:', activeSheetId);
+        console.log('Found sheet:', activeSheet?.properties?.title);
+
+        if (!activeSheet || !activeSheet.properties || !activeSheet.properties.title) {
+            throw new Error('No valid active sheet found');
+        }
+
+        const sheetName = activeSheet.properties.title;
+        console.log('Using sheet name:', sheetName);
+
+        // 3. Obtener los datos usando el nombre de la hoja activa
+        const range = `${sheetName}!A1:Z1000`;
+        console.log('Fetching data with range:', range);
+        
+        const response = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
                 }
             }
         );
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error?.message || 'Failed to fetch spreadsheet data');
+            const errorText = await response.text();
+            console.error('API Response:', response.status, errorText);
+            throw new Error(`API error: ${response.status} - ${errorText}`);
         }
 
         const data = await response.json();
         return data.values || [];
+
     } catch (error) {
         console.error('Error in getSheetData:', error);
-        throw error;
+        if (error.message.includes('Authentication failed')) {
+            throw new Error('Please sign in to access the spreadsheet');
+        }
+        throw new Error('Unable to access spreadsheet data. Please make sure you have permission to view this document.');
     }
-}
+};
 
-// Exponer la función globalmente
-window.getSheetData = getSheetData;
 console.log('Google API client loaded with enhanced error handling');
