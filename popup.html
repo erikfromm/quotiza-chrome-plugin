@@ -9,245 +9,956 @@
       height: 100vh;
       margin: 0;
       padding: 20px;
-      font-family: Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       background: white;
       box-sizing: border-box;
-      overflow-y: auto;
     }
-    
-    .input-group {
-      margin-bottom: 10px;
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid #E5E7EB;
     }
-    
-    .input-group label {
-      display: block;
-      margin-bottom: 5px;
-    }
-    
-    .input-group input {
-      width: 100%;
+
+    .hide-sidebar-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
       padding: 5px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
+      color: #666;
     }
 
-    /* Color primario para botones principales */
-    .confirm-btn, 
-    #importBtn, 
-    #loginBtn {
-        background-color: #057a55;
-        color: white;
-        border: none;
-        padding: 8px 16px;
-        border-radius: 8px;
-        cursor: pointer;
-    }
-
-    .confirm-btn:hover, 
-    #importBtn:hover, 
-    #loginBtn:hover {
-        background-color: #046c4e; /* Un poco más oscuro para hover */
-    }
-
-    /* Color secundario para botones secundarios */
-    .secondary-btn,
-    .back-btn,
-    #historyBtn,
     #logoutBtn {
-        background-color: #ffffff;
-        color: #374151;
-        border: 1px solid #d1d5db;
-        padding: 8px 16px;
-        border-radius: 8px;
-        cursor: pointer;
+      background: none;
+      border: none;
+      color: #666;
+      cursor: pointer;
+      font-size: 14px;
     }
 
-    .secondary-btn:hover,
-    .back-btn:hover,
-    #historyBtn:hover,
-    #logoutBtn:hover {
-        background-color: #f3f4f6;
+    .title-section {
+      padding: 20px;
+      text-align: center;
     }
 
-    /* Ajuste específico para el botón de logout */
-    #logoutBtn {
-        padding: 5px 10px;
-        font-size: 12px;
+    .title-section h1 {
+      font-size: 24px;
+      color: #333;
+      margin: 0;
+      font-weight: 600;
     }
 
-    /* Ajuste específico para el botón back */
-    .back-btn {
-        padding: 5px 10px;
-        font-size: 12px;
+    .tabs {
+      display: flex;
+      justify-content: center;
+      border-bottom: 1px solid #E5E7EB;
+      padding: 0 20px;
     }
 
-    #statusMessage {
-      margin-top: 10px;
-      padding: 8px;
-      border-radius: 4px;
+    .tab {
+      padding: 12px 24px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      font-size: 14px;
+      color: #6B7280;
+      transition: all 0.2s ease;
     }
 
-    .info {
-      background-color: #e3f2fd;
-      color: #0d47a1;
+    .tab.active {
+      border-bottom-color: #18181B;
+      color: #18181B;
+      font-weight: 600;
+      font-size: 16px;
     }
 
-    .success {
-      background-color: #e8f5e9;
-      color: #1b5e20;
-    }
-
-    .error {
-      background-color: #ffebee;
-      color: #c62828;
-    }
-
-    .mapping-container {
-      margin: 15px 0;
-    }
-
-    .mapping-container label {
-      display: block;
-      margin-bottom: 5px;
-    }
-
-    .mapping-container select {
+    .field-group {
       width: 100%;
-      padding: 5px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
+      padding: 0 20px;
+      margin-bottom: 16px;
+      box-sizing: border-box;
+    }
+
+    .field-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 8px;
+    }
+
+    .select-wrapper {
+      position: relative;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #E5E7EB;
+    }
+
+    .select-wrapper select {
+      width: 100%;
+      padding: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      border: none;
+      background: transparent;
+      appearance: none;
+      cursor: pointer;
     }
 
     #mappingSection {
-      display: none;
+      padding: 20px;
+      width: calc(100% - 40px);
+      margin: 0 20px;
+      box-sizing: border-box;
     }
 
-    .header {
-        display: flex;
-        align-items: center;
-        margin-bottom: 20px;
-        position: relative;
+    .primary-button {
+      margin: 20px;
+      width: calc(100% - 40px);
+      padding: 12px;
+      background: #18181B;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 16px;
     }
 
-    .header h3 {
-        flex-grow: 1;
-        text-align: center;
-        margin: 0;
+    #importBtn {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 40px);
+      max-width: 320px;
+      padding: 12px;
+      background-color: #10B981;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      z-index: 1000;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
-    .back-btn {
-        position: absolute;
-        left: 0;
-        padding: 5px 10px;
-        font-size: 12px;
-        background: #f8f9fa;
-        border: 1px solid #dee2e6;
-        border-radius: 4px;
-        cursor: pointer;
+    #importBtn:hover {
+      background-color: #059669;
     }
 
-    .back-btn:hover {
-        background: #e9ecef;
+    /* Añadir el ícono de flecha para los select */
+    .select-wrapper {
+      position: relative;
+    }
+
+    .select-wrapper::after {
+      content: '';
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      background-image: url('/svg/chevron-down.svg');
+      background-repeat: no-repeat;
+      background-position: center;
+      pointer-events: none;
+    }
+
+    /* Estilos para la vista de History */
+    #historySection {
+        display: none;
     }
 
     .history-list {
-        margin-top: 15px;
+        margin-top: 20px;
     }
 
     .history-card {
-        background: white;
-        border: 1px solid #e0e0e0;
+        background: #f9fafb;
         border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        padding: 16px;
+        margin-bottom: 12px;
     }
 
     .history-date {
         color: #666;
-        font-size: 14px;
+        font-size: 12px;
         margin-bottom: 8px;
     }
 
     .history-products {
-        font-size: 16px;
+        font-size: 14px;
+        color: #18181b;
         font-weight: 500;
-        color: #4285f4;
+    }
+
+    .empty-history {
+        text-align: center;
+        color: #666;
+        padding: 40px 0;
+    }
+
+    /* Estilos para los tabs */
+    .tab {
+        cursor: pointer;
+    }
+
+    .tab.active {
+        color: #18181b;
+        border-bottom: 2px solid #18181b;
+    }
+
+    input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #E5E7EB;
+        border-radius: 8px;
+        font-size: 14px;
+        color: #374151;
+        background: white;
+    }
+
+    input:focus {
+        outline: none;
+        border-color: #057a55;
+        box-shadow: 0 0 0 1px #057a55;
+    }
+
+    .primary-button {
+        width: 100%;
+        max-width: 360px;
+        padding: 12px;
+        background: #18181B;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        cursor: pointer;
+        margin-top: 8px;
+    }
+
+    .primary-button:hover {
+        background: #27272a;
+    }
+
+    .login-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 20px;
+    }
+
+    .login-container img {
+        margin-bottom: 24px;
+    }
+
+    .login-container .field-group,
+    #mappingSection .field-group {
+        width: 100%;
+        margin-bottom: 16px;
+    }
+
+    .login-container input,
+    .select-wrapper select {
+        width: 100%;
+        padding: 12px;
+        font-size: 14px;
+        border: 1px solid #E5E7EB;
+        border-radius: 8px;
+        box-sizing: border-box;
+    }
+
+    .container {
+        position: relative;
+        width: 100%;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    .section {
+        width: 100%;
+        height: 100vh;
+        background: white;
+        position: fixed;
+        top: 0;
+        left: 0;
+    }
+
+    /* Estilos para los selects en la vista de mapping */
+    #mappingSection {
+        padding: 20px;
+        width: calc(100% - 40px);
+        margin: 0 20px;
+        box-sizing: border-box;
+    }
+
+    #mappingSection .field-group {
+        width: 100%;
+        margin-bottom: 16px;
+    }
+
+    .select-wrapper {
+        width: 100%;
+    }
+
+    .select-wrapper select {
+        width: 100%;
+        padding: 12px;
+        font-size: 14px;
+        border: 1px solid #E5E7EB;
+        border-radius: 8px;
+        box-sizing: border-box;
+    }
+
+    .select-wrapper select option {
+        font-size: 14px;
+        padding: 12px;
+    }
+
+    .header-container {
+        position: sticky;
+        top: 0;
+        background: white;
+        z-index: 100;
+        border-bottom: 1px solid #E5E7EB;
+    }
+
+    .section {
+        width: 100%;
+        height: 100vh;
+        background: white;
+        position: fixed;
+        top: 0;
+        left: 0;
+        overflow-y: auto;
+    }
+
+    #mainSection {
+        display: flex;
+        flex-direction: column;
+    }
+
+    #mappingSection {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+    }
+
+    /* Asegurar que los botones tengan el mismo ancho */
+    .primary-button,
+    #importBtn {
+        width: calc(100% - 40px);
+        margin: 20px;
+    }
+
+    .login-container input,
+    .select-wrapper select {
+        width: 100%;
+        padding: 12px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+
+    .status-message {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 14px;
+        z-index: 1000;
+    }
+
+    .status-message.error {
+        background: #FEE2E2;
+        color: #991B1B;
+    }
+
+    .status-message.info {
+        background: #E0F2FE;
+        color: #075985;
+    }
+
+    .status-message.success {
+        background: #DCFCE7;
+        color: #166534;
+    }
+
+    .history-table {
+        width: 100%;
+        table-layout: fixed;
+        border-collapse: collapse;
+        margin-top: 20px;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .history-table th,
+    .history-table td {
+        width: 33.33%;
+        padding: 12px 16px;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .history-table th {
+        background: #f9fafb;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .history-table td {
+        color: #4b5563;
+    }
+
+    .empty-message {
+        text-align: center;
+        color: #6b7280;
+        padding: 24px !important;
+    }
+
+    .error-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        max-width: 80%;
+        max-height: 80vh;
+        overflow-y: auto;
+        z-index: 1000;
+    }
+
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+    }
+
+    .error-list {
+        margin: 10px 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .error-list li {
+        color: #dc2626;
+        padding: 5px 0;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .modal-close {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+    }
+
+    .import-summary {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 400px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+    }
+
+    .summary-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .summary-header h3 {
+        font-size: 13px;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .summary-content {
+        padding: 16px;
+        font-size: 13px;
+    }
+
+    .close-summary {
+        width: 24px;
+        height: 24px;
+        background: url('svg/close.svg') no-repeat center;
+        background-size: contain;
+        border: none;
+        cursor: pointer;
+        opacity: 0.6;
+        transition: opacity 0.2s;
+    }
+
+    .close-summary:hover {
+        opacity: 1;
+    }
+
+    .validation-errors {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .validation-errors li {
+        font-size: 13px;
+        color: #4b5563;
+        margin-bottom: 8px;
+    }
+
+    .fix-errors-btn {
+        display: block;
+        width: 100%;
+        padding: 12px;
+        margin-top: 16px;
+        background: #ef4444;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+    }
+
+    .fix-errors-btn:hover {
+        background: #dc2626;
+    }
+
+    .template-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 400px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+    }
+
+    .template-modal-header {
+        padding: 16px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .template-modal-content {
+        padding: 16px;
+    }
+
+    .template-modal-actions {
+        padding: 16px;
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .template-btn {
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+    }
+
+    .template-btn-primary {
+        background: #2563eb;
+        color: white;
+        border: none;
+    }
+
+    .template-btn-secondary {
+        background: white;
+        border: 1px solid #d1d5db;
+        color: #374151;
+    }
+
+    .primary-button {
+        background-color: #057a55;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        padding: 12px;
+        width: 100%;
+        transition: background-color 0.2s;
+    }
+
+    .primary-button:hover {
+        background-color: #046c4e;
+    }
+
+    #importBtn {
+        background-color: #057a55;
+    }
+
+    .required {
+        color: #dc2626;
+        margin-left: 2px;
+    }
+
+    .accordion {
+        margin-top: 20px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .accordion-button {
+        width: 100%;
+        padding: 12px;
+        background: #f9fafb;
+        border: none;
+        text-align: left;
+        font-size: 14px;
+        font-weight: 500;
+        color: #374151;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .accordion-button:hover {
+        background: #f3f4f6;
+    }
+
+    .accordion-icon {
+        transition: transform 0.2s;
+    }
+
+    .accordion-button.active .accordion-icon {
+        transform: rotate(180deg);
+    }
+
+    .accordion-content {
+        display: none;
+        padding: 16px;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .accordion-content.active {
+        display: block;
+    }
+
+    /* Agregar padding al final del contenido para que no se oculte detrás del botón */
+    #mappingSection {
+        padding-bottom: 80px;
+    }
+
+    /* Asegurar que el contenido del acordeón no se oculte */
+    .accordion-content {
+        margin-bottom: 80px;
+    }
+
+    /* Estilos para los estados */
+    .status {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+        display: none;
+    }
+
+    .status.info {
+        background-color: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .status.success {
+        background-color: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    .status.error {
+        background-color: #ffebee;
+        color: #c62828;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+    }
+
+    .modal-content {
+        background-color: white;
+        margin: 15% auto;
+        padding: 20px;
+        border-radius: 8px;
+        width: 80%;
+        max-width: 500px;
     }
   </style>
 </head>
 <body>
+  <!-- Vista de Login -->
   <div id="loginSection">
-    <h3>Login to Quotiza</h3>
-    <div class="input-group">
-      <label for="apiToken">API Token:</label>
-      <input type="text" id="apiToken" placeholder="Enter your API token">
-    </div>
-    <div class="input-group">
-      <label for="accountId">Account ID:</label>
-      <input type="text" id="accountId" placeholder="Enter your account ID">
-    </div>
-    <button id="loginBtn">Login</button>
+      <h2>Login to Quotiza</h2>
+      <form id="loginForm">
+          <div class="form-group">
+              <label for="email">Email</label>
+              <input type="email" id="email" name="email" required>
+          </div>
+          <div class="form-group">
+              <label for="password">Password</label>
+              <input type="password" id="password" name="password" required>
+          </div>
+          <button type="button" id="loginBtn">Login</button>
+      </form>
   </div>
 
-  <div id="mappingSection" style="display: none;">
-    <div class="header">
-        <h3>Column Mapping</h3>
-        <div class="header-buttons">
-            <button id="historyBtn" class="secondary-btn">History</button>
-            <button id="logoutBtn">Logout</button>
+  <!-- Vista principal post-login -->
+  <div id="mainSection" class="section" style="display: none;">
+    <div class="header-container">
+      <div class="top-bar">
+        <button class="hide-sidebar-btn" id="hideSidebarBtn">
+          <img src="/svg/sidebar-close.svg" alt="Close sidebar" width="24" height="24">
+        </button>
+        <button id="logoutBtn">Logout</button>
+      </div>
+
+      <div class="title-section">
+        <h1>Quotiza Product Import</h1>
+      </div>
+
+      <div class="tabs">
+        <div class="tab active">Import</div>
+        <div class="tab">History</div>
+      </div>
+    </div>
+
+    <div id="mappingSection">
+      <div class="field-group">
+        <label>SKU <span class="required">*</span></label>
+        <div class="select-wrapper">
+          <select id="skuColumn">
+            <option value="">Select Column</option>
+          </select>
         </div>
+      </div>
+
+      <div class="field-group">
+        <label>Name <span class="required">*</span></label>
+        <div class="select-wrapper">
+          <select id="nameColumn">
+            <option value="">Select Column</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label>Brand <span class="required">*</span></label>
+        <div class="select-wrapper">
+          <select id="brandColumn">
+            <option value="">Select Column</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label>Category <span class="required">*</span></label>
+        <div class="select-wrapper">
+          <select id="categoryColumn">
+            <option value="">Select Column</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label>Image URL <span class="required">*</span></label>
+        <div class="select-wrapper">
+          <select id="imageUrlColumn">
+            <option value="">Select Column</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label>Base Price <span class="required">*</span></label>
+        <div class="select-wrapper">
+          <select id="basePriceColumn">
+            <option value="">Select Column</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="accordion">
+        <button class="accordion-button">
+          Additional Fields
+          <span class="accordion-icon">▼</span>
+        </button>
+        <div class="accordion-content">
+          <div class="field-group">
+            <label>MSRP</label>
+            <div class="select-wrapper">
+              <select id="msrpColumn">
+                <option value="">Select Column</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label>Description</label>
+            <div class="select-wrapper">
+              <select id="descriptionColumn">
+                <option value="">Select Column</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label>Active</label>
+            <div class="select-wrapper">
+              <select id="activeColumn">
+                <option value="">Select Column</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label>UPC</label>
+            <div class="select-wrapper">
+              <select id="upcColumn">
+                <option value="">Select Column</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label>Sales Unit</label>
+            <div class="select-wrapper">
+              <select id="salesUnitColumn">
+                <option value="">Select Column</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label>Base Unit of Measure</label>
+            <div class="select-wrapper">
+              <select id="baseUnitOfMeasureColumn">
+                <option value="">Select Column</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label>Base Units per Sales Unit</label>
+            <div class="select-wrapper">
+              <select id="baseUnitsPerSalesUnitColumn">
+                <option value="">Select Column</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label>Custom 1 Name</label>
+            <div class="select-wrapper">
+              <select id="custom1NameColumn">
+                <option value="">Select Column</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label>Custom 1 Value</label>
+            <div class="select-wrapper">
+              <select id="custom1ValueColumn">
+                <option value="">Select Column</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label>Custom 2 Name</label>
+            <div class="select-wrapper">
+              <select id="custom2NameColumn">
+                <option value="">Select Column</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label>Custom 2 Value</label>
+            <div class="select-wrapper">
+              <select id="custom2ValueColumn">
+                <option value="">Select Column</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label>Custom 3 Name</label>
+            <div class="select-wrapper">
+              <select id="custom3NameColumn">
+                <option value="">Select Column</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label>Custom 3 Value</label>
+            <div class="select-wrapper">
+              <select id="custom3ValueColumn">
+                <option value="">Select Column</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button id="importBtn">Import Products</button>
     </div>
-    <div class="mapping-container">
-      <label for="skuColumn">SKU:</label>
-      <select id="skuColumn" class="column-select">
-        <option value="">-- Select Column --</option>
-      </select>
+
+    <div id="historySection" style="display: none;">
+      <div id="historyList" class="history-list">
+        <!-- El contenido se llenará dinámicamente -->
+      </div>
     </div>
-    <div class="mapping-container">
-      <label for="nameColumn">Name:</label>
-      <select id="nameColumn" class="column-select">
-        <option value="">-- Select Column --</option>
-      </select>
-    </div>
-    <div class="mapping-container">
-      <label for="brandColumn">Brand:</label>
-      <select id="brandColumn" class="column-select">
-        <option value="">-- Select Column --</option>
-      </select>
-    </div>
-    <div class="mapping-container">
-      <label for="categoryColumn">Category:</label>
-      <select id="categoryColumn" class="column-select">
-        <option value="">-- Select Column --</option>
-      </select>
-    </div>
-    <div class="mapping-container">
-      <label for="imageUrlColumn">Image URL:</label>
-      <select id="imageUrlColumn" class="column-select">
-        <option value="">-- Select Column --</option>
-      </select>
-    </div>
-    <div class="mapping-container">
-      <label for="basePriceColumn">Base Price:</label>
-      <select id="basePriceColumn" class="column-select">
-        <option value="">-- Select Column --</option>
-      </select>
-    </div>
-    <button id="importBtn">Import Products</button>
   </div>
 
-  <div id="historySection" style="display: none;">
-    <div class="header">
-        <button id="backFromHistoryBtn" class="back-btn">← Back</button>
-        <h3>Import History</h3>
-    </div>
-    <div id="historyList" class="history-list">
-        <!-- Las cards se agregarán dinámicamente aquí -->
-    </div>
-  </div>
+  <div id="status" class="status" style="display: none;"></div>
 
-  <div id="statusMessage"></div>
+  <div id="validationModal" class="modal" style="display: none;">
+      <div class="modal-content">
+          <h2>Validation Errors</h2>
+          <ul id="errorList"></ul>
+          <button onclick="document.getElementById('validationModal').style.display='none'">Close</button>
+      </div>
+  </div>
 
   <script src="popup.js"></script>
 </body>
